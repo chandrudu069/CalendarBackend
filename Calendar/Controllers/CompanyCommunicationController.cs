@@ -153,63 +153,6 @@ namespace Calendar.Controllers
 
             return Ok(communications);
         }
-        //[HttpGet("status")]
-        //public async Task<IActionResult> GetCompanyCommunicationsStatus()
-        //{
-        //    var today = DateTime.UtcNow.Date;
-
-        //    var communications = await _context.CompanyCommunications
-        //        .Include(cc => cc.Company)
-        //        .OrderBy(cc => cc.ScheduledDate) 
-        //        .ToListAsync();
-
-        //    var result = new List<object>();
-
-        //    var groupedCommunications = communications.GroupBy(cc => cc.CompanyId);
-
-        //    foreach (var group in groupedCommunications)
-        //    {
-        //        var companyName = group.First().Company?.CompanyName; 
-        //        var overdueCommunications = new List<object>();
-        //        var dueTodayCommunications = new List<object>();
-        //        var orderedCommunications = group.OrderBy(c => c.ScheduledDate).ToList();
-        //        foreach (var communication in orderedCommunications)
-        //        {
-        //            if (!communication.Status)
-        //            {
-        //                if (communication.ScheduledDate.Date < today)
-        //                {
-        //                    overdueCommunications.Add(new
-        //                    {
-        //                        communication.Description,
-        //                        communication.ScheduledDate,
-        //                        DaysOverdue = (today - communication.ScheduledDate.Date).Days
-        //                    });
-        //                }
-        //                else if (communication.ScheduledDate.Date == today)
-        //                {
-        //                    dueTodayCommunications.Add(new
-        //                    {
-        //                        communication.Description,
-        //                        communication.ScheduledDate
-        //                    });
-        //                }
-        //            }
-        //        }
-
-        //        if (overdueCommunications.Any() || dueTodayCommunications.Any())
-        //        {
-        //            result.Add(new
-        //            {
-        //                CompanyName = companyName,
-        //                Overdue = overdueCommunications,
-        //                DueToday = dueTodayCommunications
-        //            });
-        //        }
-        //    }
-
-        //    return Ok(result);
-        //}
         [HttpGet("status")]
         public async Task<IActionResult> GetCompanyCommunicationsStatus()
         {
@@ -217,7 +160,6 @@ namespace Calendar.Controllers
 
             var communications = await _context.CompanyCommunications
                 .Include(cc => cc.Company)
-                .Where(cc => !cc.Status) // Filter out communications with Status == true early
                 .OrderBy(cc => cc.ScheduledDate)
                 .ToListAsync();
 
@@ -230,31 +172,29 @@ namespace Calendar.Controllers
                 var companyName = group.First().Company?.CompanyName;
                 var overdueCommunications = new List<object>();
                 var dueTodayCommunications = new List<object>();
-
-                // Process the communications for each company
-                foreach (var communication in group.OrderBy(c => c.ScheduledDate))
+                var orderedCommunications = group.OrderBy(c => c.ScheduledDate).ToList();
+                foreach (var communication in orderedCommunications)
                 {
-                    if (communication.ScheduledDate.Date < today)
+                    if (!communication.Status)
                     {
-                        overdueCommunications.Add(new
+                        if (communication.ScheduledDate.Date < today)
                         {
-                            communication.Description,
-                            communication.ScheduledDate,
-                            DaysOverdue = (today - communication.ScheduledDate.Date).Days
-                        });
-                    }
-                    else if (communication.ScheduledDate.Date == today)
-                    {
-                        dueTodayCommunications.Add(new
+                            overdueCommunications.Add(new
+                            {
+                                communication.Description,
+                                communication.ScheduledDate,
+                                DaysOverdue = (today - communication.ScheduledDate.Date).Days
+                            });
+                        }
+                        else if (communication.ScheduledDate.Date == today)
                         {
-                            communication.Description,
-                            communication.ScheduledDate
-                        });
+                            dueTodayCommunications.Add(new
+                            {
+                                communication.Description,
+                                communication.ScheduledDate
+                            });
+                        }
                     }
-
-
-                    break; // No need to continue checking other communications for this company
-
                 }
 
                 if (overdueCommunications.Any() || dueTodayCommunications.Any())
@@ -270,7 +210,7 @@ namespace Calendar.Controllers
 
             return Ok(result);
         }
-
+       
         [HttpPut]
         [Route("UpdateScheduledDate")]
         public async Task<IActionResult> UpdateScheduledDate([FromBody] UpdateScheduledDateRequest request)
